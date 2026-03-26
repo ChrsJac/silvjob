@@ -1,6 +1,11 @@
 name: Update SilvDocJobs
 
 on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "docs/data/**"
   schedule:
     - cron: "25 12 * * 1,4"
   workflow_dispatch:
@@ -14,7 +19,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
