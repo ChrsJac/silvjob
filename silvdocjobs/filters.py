@@ -19,12 +19,16 @@ TOPIC_PATTERNS: dict[str, str] = {
     "forestry": r"\bforestr(?:y|ies)\b",
     "tree breeding": r"\btree breeding\b|\bforest genetics\b|\bgenomics\b",
     "extension forestry": r"\bextension\b.{0,40}\bforestr(?:y|ies)\b|\bforestr(?:y|ies)\b.{0,40}\bextension\b",
+    "agroforestry": r"\bagroforestr(?:y|ies)\b",
+    "urban forestry": r"\burban forestr(?:y|ies)\b|\burban forest\b",
 }
 
 ROLE_PATTERNS: dict[str, str] = {
     "assistant professor": r"\bassistant professor\b",
     "associate professor": r"\bassociate professor\b",
     "professor": r"\bprofessor\b",
+    "faculty": r"\bfaculty\b",
+    "open-rank": r"\bopen[- ]rank\b",
     "postdoc": r"\bpost\s*-?doctoral?\b|\bpostdoc\b|\bpostdoctoral scholar\b|\bpostdoctoral fellow\b",
     "research scientist": r"\bresearch scientist\b|\bresearch faculty\b|\bscientist\b|\bresearch fellow\b",
     "research associate": r"\bresearch associate\b|\bresearch scholar\b",
@@ -84,4 +88,6 @@ def infer_job_type(title: str, description: str = "") -> str:
         return "Research"
     if re.search(ROLE_PATTERNS["director"], text):
         return "Director"
+    if re.search(ROLE_PATTERNS["faculty"], text) or re.search(ROLE_PATTERNS["open-rank"], text):
+        return "Faculty/Academic"
     return "Faculty/Academic"
