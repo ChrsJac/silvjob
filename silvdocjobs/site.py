@@ -30,7 +30,9 @@ INDEX_HTML = '''<!doctype html>
         <option value="Extension">Extension</option>
         <option value="Director">Director</option>
       </select>
+      <button id="refreshBtn" class="refresh-btn" title="Reload the latest job data">&#8635; Refresh</button>
     </div>
+    <div id="lastUpdated" class="last-updated"></div>
   </header>
 
   <main class="layout">
@@ -141,18 +143,48 @@ function applyFilters() {
   renderDetail();
 }
 
-async function init() {
-  const response = await fetch("data/jobs.json");
-  state.jobs = await response.json();
-  state.jobs.sort((a, b) => {
+async function loadJobs() {
+  const response = await fetch("data/jobs.json?" + Date.now());
+  const jobs = await response.json();
+  jobs.sort((a, b) => {
     const da = a.date_posted || "9999-99-99";
     const db = b.date_posted || "9999-99-99";
     if (da !== db) return da < db ? -1 : 1;
     return (a.organization || "").localeCompare(b.organization || "");
   });
+  return jobs;
+}
+
+function setLastUpdated() {
+  const el = document.getElementById("lastUpdated");
+  if (el) el.textContent = "Data loaded: " + new Date().toLocaleTimeString();
+}
+
+async function refreshData() {
+  const btn = document.getElementById("refreshBtn");
+  btn.disabled = true;
+  btn.textContent = "Loading\u2026";
+  try {
+    state.jobs = await loadJobs();
+    state.selected = null;
+    setLastUpdated();
+    applyFilters();
+  } catch (error) {
+    const el = document.getElementById("lastUpdated");
+    if (el) el.textContent = "Refresh failed: " + String(error);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = "&#8635; Refresh";
+  }
+}
+
+async function init() {
+  state.jobs = await loadJobs();
+  setLastUpdated();
 
   document.getElementById("searchBox").addEventListener("input", applyFilters);
   document.getElementById("typeFilter").addEventListener("change", applyFilters);
+  document.getElementById("refreshBtn").addEventListener("click", refreshData);
   applyFilters();
 }
 
@@ -201,6 +233,24 @@ body {
   border: 1px solid #cbd5db;
   border-radius: 10px;
   background: white;
+}
+.refresh-btn {
+  padding: 0.7rem 1rem;
+  border: 1px solid #cbd5db;
+  border-radius: 10px;
+  background: white;
+  color: #134e7a;
+  cursor: pointer;
+  font: inherit;
+  white-space: nowrap;
+}
+.refresh-btn:hover { background: #f0f4f6; }
+.refresh-btn:disabled { opacity: 0.6; cursor: default; }
+.last-updated {
+  font-size: 0.78rem;
+  color: #61717a;
+  text-align: right;
+  padding-top: 0.25rem;
 }
 .layout {
   display: grid;

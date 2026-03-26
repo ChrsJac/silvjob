@@ -79,18 +79,48 @@ function applyFilters() {
   renderDetail();
 }
 
-async function init() {
-  const response = await fetch("data/jobs.json");
-  state.jobs = await response.json();
-  state.jobs.sort((a, b) => {
+async function loadJobs() {
+  const response = await fetch("data/jobs.json?" + Date.now());
+  const jobs = await response.json();
+  jobs.sort((a, b) => {
     const da = a.date_posted || "9999-99-99";
     const db = b.date_posted || "9999-99-99";
     if (da !== db) return da < db ? -1 : 1;
     return (a.organization || "").localeCompare(b.organization || "");
   });
+  return jobs;
+}
+
+function setLastUpdated() {
+  const el = document.getElementById("lastUpdated");
+  if (el) el.textContent = "Data loaded: " + new Date().toLocaleTimeString();
+}
+
+async function refreshData() {
+  const btn = document.getElementById("refreshBtn");
+  btn.disabled = true;
+  btn.textContent = "Loading…";
+  try {
+    state.jobs = await loadJobs();
+    state.selected = null;
+    setLastUpdated();
+    applyFilters();
+  } catch (error) {
+    const el = document.getElementById("lastUpdated");
+    if (el) el.textContent = "Refresh failed: " + String(error);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = "&#8635; Refresh";
+  }
+}
+
+async function init() {
+  state.jobs = await loadJobs();
+  setLastUpdated();
 
   document.getElementById("searchBox").addEventListener("input", applyFilters);
   document.getElementById("typeFilter").addEventListener("change", applyFilters);
+  document.getElementById("refreshBtn").addEventListener("click", refreshData);
   applyFilters();
 }
 

@@ -38,6 +38,24 @@ body {
   border-radius: 10px;
   background: white;
 }
+.refresh-btn {
+  padding: 0.7rem 1rem;
+  border: 1px solid #cbd5db;
+  border-radius: 10px;
+  background: white;
+  color: #134e7a;
+  cursor: pointer;
+  font: inherit;
+  white-space: nowrap;
+}
+.refresh-btn:hover { background: #f0f4f6; }
+.refresh-btn:disabled { opacity: 0.6; cursor: default; }
+.last-updated {
+  font-size: 0.78rem;
+  color: #61717a;
+  text-align: right;
+  padding-top: 0.25rem;
+}
 .layout {
   display: grid;
   grid-template-columns: 1.4fr 1fr;
