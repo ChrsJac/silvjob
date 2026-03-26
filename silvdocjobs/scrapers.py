@@ -9,7 +9,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from .config import SourceConfig
-from .filters import classify_job, infer_job_type
+from .filters import classify_job, infer_job_type, TOPIC_PATTERNS, ROLE_PATTERNS, EXCLUDE_PATTERNS
 from .models import JobRecord
 from .utils import (
     USER_AGENT,
@@ -24,6 +24,15 @@ from .utils import (
 
 LOGGER = logging.getLogger(__name__)
 TIMEOUT = 45
+# Cap detail-page requests per source to balance coverage vs. scraping time and server load
+_MAX_DETAIL_PAGES = 40
+# Polite delay between detail-page requests within a single source
+_DETAIL_PAGE_DELAY = 0.3
+
+# Compiled regexes for the fast candidate pre-filter
+_TOPIC_RE = re.compile("|".join(TOPIC_PATTERNS.values()), re.IGNORECASE)
+_ROLE_RE = re.compile("|".join(ROLE_PATTERNS.values()), re.IGNORECASE)
+_EXCLUDE_RE = re.compile("|".join(EXCLUDE_PATTERNS.values()), re.IGNORECASE)
 
 
 class ScraperError(RuntimeError):
@@ -243,50 +252,117 @@ def parse_warnell_detail(detail_url: str, source: SourceConfig) -> JobRecord | N
     )
 
 
-def scrape_generic_board(source: SourceConfig, max_pages: int = 2, days_back: int = 120) -> list[JobRecord]:
-    html = fetch_html(source.url)
+def _could_be_job_candidate(title: str, context: str) -> bool:
+    """Lenient pre-filter: needs at least one topic OR role keyword, and no hard exclusions."""
+    text = f"{title} {context}".lower()
+    if _EXCLUDE_RE.search(text):
+        return False
+    return bool(_TOPIC_RE.search(text) or _ROLE_RE.search(text))
+
+
+def _scrape_generic_detail(url: str, link_text: str, source: SourceConfig) -> JobRecord | None:
+    """Fetch a detail page and build a JobRecord if it passes full classification."""
+    try:
+        html = fetch_html(url)
+    except Exception as exc:
+        LOGGER.debug("Detail page fetch failed %s: %s", url, exc)
+        return None
+
     soup = BeautifulSoup(html, "html.parser")
-    jobs: list[JobRecord] = []
+    full_text = clean_text(soup.get_text("\n", strip=True))
+
+    title = extract_first_heading_text(soup) or link_text
+    description = normalize_description(full_text)
+
+    date_posted = extract_date_guess(full_text)
+
+    # Try to extract a location line
+    location = ""
+    loc_m = re.search(r"(?:location|city|campus)\s*:?\s*([^\n,;|]{3,80})", full_text, re.IGNORECASE)
+    if loc_m:
+        location = clean_text(loc_m.group(1))
+
+    keep = classify_job(title, description, "")
+    if not keep.keep:
+        return None
+
+    return JobRecord(
+        title=title,
+        organization=source.organization,
+        source=source.name,
+        listing_url=url,
+        external_posting_url=url,
+        location=location,
+        salary="$--.--",
+        date_posted=date_posted,
+        description=description,
+        job_type=infer_job_type(title, description),
+        education_required="",
+        matched_terms=keep.matched_terms,
+        matched_roles=keep.matched_roles,
+    )
+
+
+def scrape_generic_board(source: SourceConfig, max_pages: int = 2, days_back: int = 120) -> list[JobRecord]:
+    """Scrape a generic job board: collect candidate links across listing pages, then
+    follow each to a detail page for full classification."""
+    candidate_links: list[tuple[str, str]] = []  # (absolute_url, link_text)
     seen_urls: set[str] = set()
 
-    for link in soup.find_all("a", href=True):
-        href = link.get("href", "")
-        text = clean_text(link.get_text(" ", strip=True))
-        if not href or not text or len(text) < 6:
+    for page_num in range(1, max_pages + 1):
+        if page_num == 1:
+            page_url = source.url
+        else:
+            sep = "&" if "?" in source.url else "?"
+            page_url = f"{source.url}{sep}page={page_num}"
+
+        try:
+            html = fetch_html(page_url)
+        except Exception as exc:
+            LOGGER.debug("Listing page failed %s: %s", page_url, exc)
+            break
+
+        soup = BeautifulSoup(html, "html.parser")
+        found_new = False
+
+        for link in soup.find_all("a", href=True):
+            href = link.get("href", "")
+            text = clean_text(link.get_text(" ", strip=True))
+            if not href or href.startswith("#") or not text or len(text) < 6:
+                continue
+            url = absolutize(page_url, href)
+            if not url or url in seen_urls or url == page_url or url == source.url:
+                continue
+
+            # Use surrounding paragraph/container text as extra context
+            context = text
+            if link.parent:
+                context = clean_text(link.parent.get_text(" ", strip=True))
+
+            if not _could_be_job_candidate(text, context):
+                continue
+
+            seen_urls.add(url)
+            found_new = True
+            candidate_links.append((url, text))
+
+            if len(candidate_links) >= _MAX_DETAIL_PAGES:
+                break
+
+        if not found_new or len(candidate_links) >= _MAX_DETAIL_PAGES:
+            break
+
+    jobs: list[JobRecord] = []
+    for url, link_text in candidate_links:
+        job = _scrape_generic_detail(url, link_text, source)
+        if not job:
             continue
-        url = absolutize(source.url, href)
-        if url in seen_urls:
+        if not is_recent_enough(job.date_posted, days_back):
             continue
+        jobs.append(job)
+        time.sleep(_DETAIL_PAGE_DELAY)  # be polite between detail-page requests
 
-        context = text
-        if link.parent:
-            context = clean_text(link.parent.get_text(" ", strip=True))
-
-        result = classify_job(text, context, "")
-        if not result.keep:
-            continue
-
-        jobs.append(
-            JobRecord(
-                title=text,
-                organization=source.organization,
-                source=source.name,
-                listing_url=url,
-                external_posting_url=url,
-                location="",
-                salary="$--.--",
-                date_posted=extract_date_guess(context),
-                description=normalize_description(context),
-                job_type=infer_job_type(text, context),
-                education_required="",
-                matched_terms=result.matched_terms,
-                matched_roles=result.matched_roles,
-            )
-        )
-        seen_urls.add(url)
-
-    filtered = [job for job in jobs if is_recent_enough(job.date_posted, days_back)]
-    return filtered
+    return jobs
 
 
 def extract_date_guess(text: str) -> str:

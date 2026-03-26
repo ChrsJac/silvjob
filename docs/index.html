@@ -5,48 +5,134 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>SilvDocJobs</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <header class="site-header">
-    <div>
-      <h1>SilvDocJobs</h1>
-      <p>Doctorate-relevant forestry, silviculture, quantitative silviculture, extension, research, and postdoc openings.</p>
+    <div class="header-main">
+      <div>
+        <h1>SilvDocJobs</h1>
+        <p>Doctorate-relevant forestry, silviculture, quantitative silviculture, extension, research, and postdoc openings.</p>
+      </div>
+      <div class="controls" id="jobsControls">
+        <input id="searchBox" type="search" placeholder="Search title, organization, topic, or source">
+        <select id="typeFilter">
+          <option value="">All job types</option>
+          <option value="Faculty/Academic">Faculty/Academic</option>
+          <option value="Postdoc">Postdoc</option>
+          <option value="Research">Research</option>
+          <option value="Extension">Extension</option>
+          <option value="Director">Director</option>
+        </select>
+        <button id="refreshBtn" class="refresh-btn" title="Reload the latest job data">&#8635; Refresh</button>
+      </div>
     </div>
-    <div class="controls">
-      <input id="searchBox" type="search" placeholder="Search title, organization, topic, or source">
-      <select id="typeFilter">
-        <option value="">All job types</option>
-        <option value="Faculty/Academic">Faculty/Academic</option>
-        <option value="Postdoc">Postdoc</option>
-        <option value="Research">Research</option>
-        <option value="Extension">Extension</option>
-        <option value="Director">Director</option>
-      </select>
-    </div>
+    <div id="lastUpdated" class="last-updated"></div>
+    <nav class="tab-nav" role="tablist">
+      <button class="tab-btn active" data-tab="jobs" role="tab" aria-selected="true">SilvDocJobs</button>
+      <button class="tab-btn" data-tab="sitpred" role="tab" aria-selected="false">&#128202; SitPred</button>
+    </nav>
   </header>
 
-  <main class="layout">
-    <section class="table-panel">
-      <div class="table-wrap">
-        <table id="jobsTable">
-          <thead>
-            <tr>
-              <th>Organization</th>
-              <th>Position</th>
-              <th>Salary</th>
-              <th>Date Posted</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
+  <!-- Jobs tab -->
+  <div id="jobsTab" role="tabpanel">
+    <main class="layout">
+      <section class="table-panel">
+        <div class="table-wrap">
+          <table id="jobsTable">
+            <thead>
+              <tr>
+                <th>Organization</th>
+                <th>Position</th>
+                <th>Salary</th>
+                <th>Date Posted</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
 
-    <aside class="detail-panel" id="detailPanel">
-      <div class="detail-empty">Select a position to view the cleaned description and source link.</div>
-    </aside>
-  </main>
+      <aside class="detail-panel" id="detailPanel">
+        <div class="detail-empty">Select a position to view the cleaned description and source link.</div>
+      </aside>
+    </main>
+  </div>
+
+  <!-- SitPred tab -->
+  <div id="sitpredTab" role="tabpanel" hidden>
+    <div class="sp-page">
+
+      <!-- Filter / view toolbar -->
+      <div class="sp-toolbar">
+        <div class="sp-filters">
+          <label>From <select id="spYearFrom" class="sp-select"></select></label>
+          <label>To <select id="spYearTo" class="sp-select"></select></label>
+          <label class="sp-check"><input type="checkbox" id="spIncludeRetired"> Retired/emeritus</label>
+          <label class="sp-check"><input type="checkbox" id="spShowUnmatched"> Unmatched</label>
+          <label>Min tours
+            <select id="spMinApps" class="sp-select">
+              <option value="1">1+</option>
+              <option value="2">2+</option>
+              <option value="3">3+</option>
+              <option value="5">5+</option>
+            </select>
+          </label>
+        </div>
+        <div class="sp-view-btns" role="group" aria-label="Chart view">
+          <button class="sp-view-btn active" data-view="presence">Presence Over Time</button>
+          <button class="sp-view-btn" data-view="institutions">By Institution</button>
+          <button class="sp-view-btn" data-view="retired">Retired/Emeritus</button>
+          <button class="sp-view-btn" data-view="people">People</button>
+        </div>
+      </div>
+
+      <!-- Stats summary -->
+      <p id="spStats" class="sp-stats"></p>
+
+      <!-- Chart canvas (hidden when People view is active) -->
+      <div id="spChartBox" class="sp-chart-box">
+        <canvas id="spChart"></canvas>
+      </div>
+
+      <!-- People table (hidden when chart view is active) -->
+      <div id="spPeoplePanel" hidden>
+        <div class="sp-people-header">
+          <input id="spPersonSearch" type="search" class="sp-search" placeholder="Search name or institution…">
+          <span id="spPeopleCount" class="sp-stats"></span>
+        </div>
+        <div class="sp-table-wrap">
+          <table id="spPeopleTable">
+            <thead>
+              <tr>
+                <th>Person</th>
+                <th>Institution</th>
+                <th>First Year</th>
+                <th>Last Year</th>
+                <th>Total Tours</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Institution drill-down detail -->
+      <div id="spDetailPanel"></div>
+
+      <!-- Methodology disclaimer -->
+      <p class="sp-disclaimer">
+        &#9888; <strong>Methodology note:</strong> Institutions are matched from the public
+        <a href="https://www.silvicultureinstructors.com" target="_blank" rel="noopener">2021 Directory</a>
+        and may not reflect the attendee&rsquo;s exact affiliation in every tour year.
+        Historical SIT attendance data may be incomplete per the site&rsquo;s own leaderboard note.
+        This panel shows <em>SIT Activity Trends</em> &mdash; a proxy for institutional presence
+        and network engagement, not a direct measure of hiring.
+      </p>
+    </div>
+  </div>
 
   <script src="app.js"></script>
+  <script src="sitpred.js"></script>
 </body>
 </html>

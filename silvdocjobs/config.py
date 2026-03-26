@@ -43,7 +43,14 @@ SOURCES: list[SourceConfig] = [
         engine="generic_board",
         url="https://www.higheredjobs.com/faculty/search.cfm?JobCat=54",
         organization="HigherEdJobs",
-        notes="Broad academic board; useful for faculty roles."
+        notes="Broad academic board; useful for faculty roles in ecology and forestry."
+    ),
+    SourceConfig(
+        name="HigherEdJobs Natural Resources",
+        engine="generic_board",
+        url="https://www.higheredjobs.com/faculty/search.cfm?JobCat=154",
+        organization="HigherEdJobs",
+        notes="Natural resources and conservation faculty positions on HigherEdJobs."
     ),
     SourceConfig(
         name="AcademicJobsOnline",
@@ -78,6 +85,55 @@ SOURCES: list[SourceConfig] = [
         engine="generic_board",
         url="https://careercenter.eforester.org/jobs/function/Faculty/",
         organization="Society of American Foresters",
-        notes="Direct forestry board; availability can vary."
+        notes="Direct forestry board from the Society of American Foresters."
+    ),
+    SourceConfig(
+        name="ESA Career Center",
+        engine="generic_board",
+        url="https://careers.esa.org/jobs/",
+        organization="Ecological Society of America",
+        notes="Academic and research positions in ecology, including forestry-related roles."
+    ),
+    SourceConfig(
+        name="IUFRO Job Advertisements",
+        engine="generic_board",
+        url="https://www.iufro.org/science/other-activities/job-advertisements/",
+        organization="IUFRO",
+        notes="International forestry research jobs from the International Union of Forest Research Organizations."
+    ),
+    SourceConfig(
+        name="Society for Conservation Biology Jobs",
+        engine="generic_board",
+        url="https://conbio.org/professional-development/job-board/",
+        organization="Society for Conservation Biology",
+        notes="Conservation biology faculty, postdoc, and research positions, including forest conservation."
+    ),
+    SourceConfig(
+        name="USDA Forest Service Research Jobs",
+        engine="generic_board",
+        url="https://research.fs.usda.gov/jobs",
+        organization="USDA Forest Service",
+        notes="Research scientist and postdoc positions at USDA Forest Service research stations."
+    ),
+    SourceConfig(
+        name="Yale School of the Environment Jobs",
+        engine="generic_board",
+        url="https://environment.yale.edu/about/jobs",
+        organization="Yale School of the Environment",
+        notes="Faculty and research positions at a top forestry and environmental school."
+    ),
+    SourceConfig(
+        name="Oregon State College of Forestry Employment",
+        engine="generic_board",
+        url="https://forestry.oregonstate.edu/about/employment-opportunities",
+        organization="Oregon State University College of Forestry",
+        notes="Employment opportunities at one of the nation's top forestry programs."
+    ),
+    SourceConfig(
+        name="Nature Careers Ecology and Forestry",
+        engine="generic_board",
+        url="https://www.nature.com/naturecareers/job-search/results/?discipline%5B%5D=ecology&term=forestry+silviculture",
+        organization="Nature Careers",
+        notes="International academic positions in ecology and forestry from Nature Careers."
     ),
 ]
