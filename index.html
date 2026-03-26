@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SilvDocJobs</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div>
+      <h1>SilvDocJobs</h1>
+      <p>Doctorate-relevant forestry, silviculture, quantitative silviculture, extension, research, and postdoc openings.</p>
+    </div>
+    <div class="controls">
+      <input id="searchBox" type="search" placeholder="Search title, organization, topic, or source">
+      <select id="typeFilter">
+        <option value="">All job types</option>
+        <option value="Faculty/Academic">Faculty/Academic</option>
+        <option value="Postdoc">Postdoc</option>
+        <option value="Research">Research</option>
+        <option value="Extension">Extension</option>
+        <option value="Director">Director</option>
+      </select>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="table-panel">
+      <div class="table-wrap">
+        <table id="jobsTable">
+          <thead>
+            <tr>
+              <th>Organization</th>
+              <th>Position</th>
+              <th>Salary</th>
+              <th>Date Posted</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <aside class="detail-panel" id="detailPanel">
+      <div class="detail-empty">Select a position to view the cleaned description and source link.</div>
+    </aside>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
