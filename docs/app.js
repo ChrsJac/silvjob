@@ -114,6 +114,19 @@ async function refreshData() {
   }
 }
 
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll(".tab-btn").forEach(b => {
+    const active = b.dataset.tab === tab;
+    b.classList.toggle("active", active);
+    b.setAttribute("aria-selected", active ? "true" : "false");
+  });
+  document.getElementById("jobsTab").hidden = (tab !== "jobs");
+  document.getElementById("sitpredTab").hidden = (tab !== "sitpred");
+  document.getElementById("jobsControls").hidden = (tab !== "jobs");
+  if (tab === "sitpred") spInitIfNeeded();
+}
+
 async function init() {
   state.jobs = await loadJobs();
   setLastUpdated();
@@ -121,6 +134,9 @@ async function init() {
   document.getElementById("searchBox").addEventListener("input", applyFilters);
   document.getElementById("typeFilter").addEventListener("change", applyFilters);
   document.getElementById("refreshBtn").addEventListener("click", refreshData);
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+  });
   applyFilters();
 }
 
