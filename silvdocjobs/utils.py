@@ -4,7 +4,7 @@ import html
 import json
 import logging
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
@@ -82,7 +82,7 @@ def is_recent_enough(date_posted: str, days_back: int) -> bool:
         posted = datetime.fromisoformat(date_posted).date()
     except ValueError:
         return True
-    cutoff = datetime.utcnow().date() - timedelta(days=days_back)
+    cutoff = datetime.now(timezone.utc).date() - timedelta(days=days_back)
     return posted >= cutoff
 
 
