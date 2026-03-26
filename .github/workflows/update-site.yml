@@ -1,6 +1,11 @@
 name: Update SilvDocJobs
 
 on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "docs/data/**"
   schedule:
     - cron: "25 12 * * 1,4"
   workflow_dispatch:
