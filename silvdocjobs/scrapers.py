@@ -204,6 +204,9 @@ def parse_warnell_detail(detail_url: str, source: SourceConfig) -> JobRecord | N
     organization = extract_field(full_text, "Employer", [
         "Job Field", "Job Type", "Location", "Location Detail", "Salary", "Job Benefits", "Job Description", "Qualifications"
     ]) or source.organization
+    # Guard: if extraction captured description prose (>150 chars) fall back to the source name.
+    if len(organization) > 150:
+        organization = source.organization
     date_posted = "--"
     for pattern in [r"([A-Z][a-z]{2,8} \d{1,2}, \d{4})", r"(\d{4}-\d{2}-\d{2})"]:
         m = re.search(pattern, full_text)
@@ -211,9 +214,10 @@ def parse_warnell_detail(detail_url: str, source: SourceConfig) -> JobRecord | N
             date_posted = parse_mmddyyyy_to_iso(m.group(1))
             break
 
+    # require_colon=True prevents matching "salary" inside prose sentences.
     salary = extract_field(full_text, "Salary", [
         "Job Benefits", "Job Description", "Qualifications", "Preferred Qualifications", "How to Apply"
-    ]) or "$--.--"
+    ], require_colon=True) or "$--.--"
     location = extract_field(full_text, "Location Detail", [
         "Salary", "Job Benefits", "Job Description", "Qualifications", "Preferred Qualifications"
     ]) or extract_field(full_text, "Location", [
@@ -224,12 +228,18 @@ def parse_warnell_detail(detail_url: str, source: SourceConfig) -> JobRecord | N
     ]) or full_text
     description = normalize_description(description)
 
+    # Skip navigation/media links (e.g. photo galleries) when looking for the external posting URL.
+    _SKIP_DOMAINS = re.compile(
+        r"\b(?:smugmug|flickr|instagram|facebook|twitter|linkedin|youtube|wikipedia)\b",
+        re.IGNORECASE,
+    )
     external_posting_url = detail_url
     for link in soup.find_all("a", href=True):
         href = link.get("href", "")
         if href.startswith("http") and "warnell.uga.edu" not in href:
-            external_posting_url = href
-            break
+            if not _SKIP_DOMAINS.search(href):
+                external_posting_url = href
+                break
 
     keep = classify_job(title, description, "")
     if not keep.keep:
@@ -293,9 +303,10 @@ def _scrape_generic_detail(url: str, link_text: str, source: SourceConfig) -> Jo
 
     date_posted = extract_date_guess(full_text)
 
-    # Try to extract a location line
+    # Try to extract a location line (require colon to avoid matching "campus" inside
+    # compound words like "multi-campus" or "location" in descriptive prose).
     location = ""
-    loc_m = re.search(r"(?:location|city|campus)\s*:?\s*([^\n,;|]{3,80})", full_text, re.IGNORECASE)
+    loc_m = re.search(r"(?:location|city|campus)\s*:\s*([^\n,;|]{3,80})", full_text, re.IGNORECASE)
     if loc_m:
         location = clean_text(loc_m.group(1))
 

@@ -64,9 +64,13 @@ def extract_first_heading_text(soup: BeautifulSoup) -> str:
     return ""
 
 
-def extract_field(text: str, label: str, stop_labels: list[str]) -> str:
+def extract_field(text: str, label: str, stop_labels: list[str], require_colon: bool = False) -> str:
     stop_pattern = "|".join(re.escape(label_) for label_ in stop_labels)
-    pattern = rf"{re.escape(label)}\s*:?\s*(.+?)(?=(?:{stop_pattern})\s*:|$)"
+    colon_part = r"\s*:" if require_colon else r"\s*:?"
+    # Stop when a stop label appears at a non-alphabetic boundary (with or without a
+    # trailing colon) so that section headers like "Job Description, Responsibilities…"
+    # are recognized even when they are not immediately followed by ":".
+    pattern = rf"{re.escape(label)}{colon_part}\s*(.+?)(?=(?:{stop_pattern})(?:[^a-zA-Z]|$)|$)"
     match = re.search(pattern, text, flags=re.IGNORECASE | re.DOTALL)
     if not match:
         return ""
