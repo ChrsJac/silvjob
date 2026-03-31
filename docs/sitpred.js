@@ -22,7 +22,6 @@ const SP = {
   showUnmatched: false,
   minAppearances: 1,
   view: "presence",
-  personSearch: "",
 };
 
 // Palette for multi-series line charts (institution presence)
@@ -90,9 +89,6 @@ function spBindEvents() {
   document.getElementById("spMinApps").addEventListener("change", e => {
     SP.minAppearances = +e.target.value; spRender();
   });
-  document.getElementById("spPersonSearch").addEventListener("input", e => {
-    SP.personSearch = e.target.value; spRenderPeopleTable();
-  });
   document.querySelectorAll(".sp-view-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       document.querySelectorAll(".sp-view-btn").forEach(b => b.classList.remove("active"));
@@ -124,37 +120,26 @@ function spYearsInRange() {
 
 function spRender() {
   const chartBox   = document.getElementById("spChartBox");
-  const peoplePanel = document.getElementById("spPeoplePanel");
-  if (SP.view === "people") {
-    chartBox.hidden   = true;
-    peoplePanel.hidden = false;
-    spRenderPeopleTable();
-  } else {
-    chartBox.hidden   = false;
-    peoplePanel.hidden = true;
-    if      (SP.view === "presence")     spRenderPresenceChart();
-    else if (SP.view === "institutions") spRenderInstitutionsChart();
-    else if (SP.view === "retired")      spRenderRetiredChart();
-  }
+  chartBox.hidden   = false;
+  if      (SP.view === "presence")     spRenderPresenceChart();
+  else if (SP.view === "institutions") spRenderInstitutionsChart();
+  else if (SP.view === "retired")      spRenderRetiredChart();
   spUpdateStats();
 }
 
 function spUpdateStats() {
   const recs = spActiveRecords();
-  const uniquePeople = new Set(recs.map(r => r.person_name_normalized)).size;
   const insts = new Set(recs.filter(r => r.institution).map(r => r.institution)).size;
   const tourYears = new Set(recs.map(r => r.year)).size;
   const el = document.getElementById("spStats");
   if (el) el.textContent =
-    `${recs.length} appearances · ${uniquePeople} unique people · ${insts} institutions · ${tourYears} tour years`;
+    `${recs.length} appearances · ${insts} institutions · ${tourYears} tour years`;
 }
 
 // ── View 1: Institution presence over time (line chart) ───────────────────────
 
 function spRenderPresenceChart() {
-  const recs = spActiveRecords().filter(r =>
-    r.status_bucket === "active_institution" && r.institution
-  );
+  const recs = spActiveRecords().filter(r => r.institution);
 
   // Build { institution → { year → Set<personNorm> } }
   const presMap = {};
@@ -217,9 +202,7 @@ function spRenderPresenceChart() {
 // ── View 2: By institution – horizontal bar ───────────────────────────────────
 
 function spRenderInstitutionsChart() {
-  const recs = spActiveRecords().filter(r =>
-    r.status_bucket === "active_institution" && r.institution
-  );
+  const recs = spActiveRecords().filter(r => r.institution);
 
   const instPeople = {};
   for (const r of recs) {
@@ -312,87 +295,27 @@ function spRenderRetiredChart() {
   );
 }
 
-// ── View 4: People table ──────────────────────────────────────────────────────
-
-function spRenderPeopleTable() {
-  const recs = spActiveRecords();
-
-  // Aggregate per-person
-  const people = {};
-  for (const r of recs) {
-    const key = r.person_name_normalized;
-    if (!people[key]) {
-      people[key] = {
-        name: r.person_name_raw,
-        institution: r.institution || "—",
-        institution_last_known: r.institution_last_known,
-        status: r.status_bucket,
-        firstYear: r.year,
-        lastYear: r.year,
-        tours: new Set(),
-      };
-    }
-    const p = people[key];
-    if (r.year < p.firstYear) p.firstYear = r.year;
-    if (r.year > p.lastYear)  p.lastYear  = r.year;
-    p.tours.add(r.year + ":" + r.tour);
-  }
-
-  let rows = Object.values(people)
-    .map(p => ({ ...p, totalTours: p.tours.size }))
-    .sort((a, b) => b.totalTours - a.totalTours);
-
-  // Search filter
-  const q = SP.personSearch.toLowerCase().trim();
-  if (q) {
-    rows = rows.filter(r =>
-      r.name.toLowerCase().includes(q) ||
-      (r.institution || "").toLowerCase().includes(q)
-    );
-  }
-
-  const tbody = document.querySelector("#spPeopleTable tbody");
-  tbody.innerHTML = rows.slice(0, 300).map(p => {
-    const instDisplay = p.status === "retired_or_emeritus"
-      ? `<span class="sp-retired">Retired/Emeritus</span>`
-        + (p.institution_last_known
-            ? ` · <span class="sp-inst-last">${escapeHtml(p.institution_last_known)}</span>`
-            : "")
-      : escapeHtml(p.institution);
-    return `<tr>
-      <td>${escapeHtml(p.name)}</td>
-      <td>${instDisplay}</td>
-      <td>${p.firstYear}</td>
-      <td>${p.lastYear}</td>
-      <td>${p.totalTours}</td>
-    </tr>`;
-  }).join("");
-
-  document.getElementById("spPeopleCount").textContent =
-    rows.length + " people";
-}
-
 // ── Institution drill-down ─────────────────────────────────────────────────────
 
 function spShowInstitutionDetail(institution, activeRecs) {
   const instRecs = activeRecs.filter(r => r.institution === institution);
-  const people = [...new Set(instRecs.map(r => r.person_name_raw))].sort();
+  const uniquePeople = new Set(instRecs.map(r => r.person_name_normalized)).size;
   const years  = [...new Set(instRecs.map(r => r.year))].sort((a, b) => a - b);
 
-  // Group by year → tour → attendees
+  // Group by year → tour → count
   const grouped = {};
   for (const r of instRecs) {
     if (!grouped[r.year]) grouped[r.year] = {};
-    if (!grouped[r.year][r.tour]) grouped[r.year][r.tour] = new Set();
-    grouped[r.year][r.tour].add(r.person_name_raw);
+    if (!grouped[r.year][r.tour]) grouped[r.year][r.tour] = 0;
+    grouped[r.year][r.tour] += 1;
   }
 
   const tourRows = Object.entries(grouped)
     .sort(([a], [b]) => b - a)
     .flatMap(([year, tours]) =>
-      Object.entries(tours).map(([tour, names]) =>
+      Object.entries(tours).map(([tour, count]) =>
         `<tr><td>${year}</td><td>${escapeHtml(tour)}</td>` +
-        `<td>${[...names].map(escapeHtml).join(", ")}</td></tr>`
+        `<td>${count}</td></tr>`
       )
     ).join("");
 
@@ -404,11 +327,10 @@ function spShowInstitutionDetail(institution, activeRecs) {
           aria-label="Close">&times;</button>
       </div>
       <div class="meta-grid" style="grid-template-columns:repeat(3,1fr);margin-top:0.75rem">
-        <div><span class="meta-label">Unique Attendees</span><span>${people.length}</span></div>
+        <div><span class="meta-label">Unique Attendees</span><span>${uniquePeople}</span></div>
         <div><span class="meta-label">Tour Years Active</span><span>${years.length}</span></div>
         <div><span class="meta-label">Total Appearances</span><span>${instRecs.length}</span></div>
       </div>
-      <p style="margin:0.6rem 0 0.25rem"><strong>Attendees:</strong> ${people.map(escapeHtml).join(" · ")}</p>
       ${tourRows
         ? `<h4 style="margin:0.9rem 0 0.4rem">Tour Appearances</h4>
            <div class="sp-table-wrap">

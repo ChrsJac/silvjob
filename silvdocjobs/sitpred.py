@@ -65,6 +65,32 @@ _NON_US_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Patterns to strip from institution names: P.O. boxes, street addresses,
+# phone/fax numbers, and CMS spam-bot placeholder text.
+_INSTITUTION_JUNK_RE = re.compile(
+    r"\s+(?:"
+    r"P\.?\s*O\.?\s+Box\b.*"                                   # P.O. Box …
+    r"|\bBox\s+\d+\b.*"                                        # Box NNN (no P.O.)
+    r"|This email address\b.*"                                  # CMS spam guard
+    r"|\b[tmf]:\s*[\d()\-+.\s]{6,}"                           # t:/m:/f: phone
+    r"|\b(?:Room|Rm\.?|Suite|Ste\.?)\s+[\w-]+\b.*"            # Room/Suite NNN
+    r"|\d{1,5}[A-Za-z]?\s+\w[\w\s-]*?"                        # NNN[L] street/building
+    r"(?:St\.?|Ave\.?|Blvd\.?|Dr\.?|Rd\.?|Ln\.?|Way|Trail|"
+    r"Pkwy|Turnpike|Circle|Cr\.?|Court|Place|Ridge|Row|Hill|"
+    r"Road|Street|Lane|Drive|Avenue|Boulevard|Building|Bldg\.?|"
+    r"Hall|Center|Lab|Laboratory).*"
+    r"|\d{5}(?:-\d{4})?\b.*"                                   # US ZIP code
+    r")",
+    re.IGNORECASE | re.DOTALL,
+)
+
+def _clean_institution_name(name: str) -> str:
+    """Strip mailing addresses, phone numbers, and CMS junk from an institution name."""
+    if not name:
+        return name
+    cleaned = _INSTITUTION_JUNK_RE.sub("", name)
+    return cleaned.strip(" ,.")
+
 
 # ── Data classes ──────────────────────────────────────────────────────────────
 
@@ -188,10 +214,13 @@ def _parse_institution(raw: str) -> tuple[str, str, str | None]:
     raw = raw.strip()
     if re.match(r"retired\b", raw, re.IGNORECASE):
         last_known = re.sub(r"^retired[,.\s]*", "", raw, flags=re.IGNORECASE).strip()
+        last_known = _clean_institution_name(last_known)
         return "retired_or_emeritus", last_known, last_known
     if re.search(r"\bemerit", raw, re.IGNORECASE):
-        return "retired_or_emeritus", raw, raw
-    return "active_institution", raw, None
+        cleaned = _clean_institution_name(raw)
+        return "retired_or_emeritus", cleaned, cleaned
+    cleaned = _clean_institution_name(raw)
+    return "active_institution", cleaned, None
 
 
 def _detect_country(institution: str) -> str:

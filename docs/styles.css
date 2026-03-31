@@ -234,20 +234,6 @@ tbody tr:hover, tbody tr.active { background: #f8fbfc; }
 }
 
 /* People panel */
-.sp-people-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.6rem;
-}
-.sp-search {
-  padding: 0.6rem 0.8rem;
-  border: 1px solid #cbd5db;
-  border-radius: 10px;
-  background: white;
-  font: inherit;
-  width: 320px;
-}
 .sp-table-wrap {
   overflow: auto;
   max-height: 480px;
@@ -255,11 +241,11 @@ tbody tr:hover, tbody tr.active { background: #f8fbfc; }
   border: 1px solid #d8e0e5;
   border-radius: 18px;
 }
-#spPeopleTable, .sp-detail-table {
+.sp-detail-table {
   width: 100%;
   border-collapse: collapse;
 }
-#spPeopleTable thead th, .sp-detail-table thead th {
+.sp-detail-table thead th {
   position: sticky;
   top: 0;
   background: #f0f4f6;
@@ -268,17 +254,15 @@ tbody tr:hover, tbody tr.active { background: #f8fbfc; }
   border-bottom: 1px solid #d8e0e5;
   font-size: 0.9rem;
 }
-#spPeopleTable tbody td, .sp-detail-table tbody td {
+.sp-detail-table tbody td {
   padding: 0.75rem 0.9rem;
   border-bottom: 1px solid #edf2f5;
   font-size: 0.9rem;
   vertical-align: top;
 }
-#spPeopleTable tbody tr:hover, .sp-detail-table tbody tr:hover {
+.sp-detail-table tbody tr:hover {
   background: #f8fbfc;
 }
-.sp-retired { color: #888; font-style: italic; }
-.sp-inst-last { color: #555; }
 
 /* Institution detail card */
 #spDetailPanel { margin-top: 1rem; }
