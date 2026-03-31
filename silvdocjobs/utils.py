@@ -64,9 +64,14 @@ def extract_first_heading_text(soup: BeautifulSoup) -> str:
     return ""
 
 
-def extract_field(text: str, label: str, stop_labels: list[str]) -> str:
+def extract_field(text: str, label: str, stop_labels: list[str], require_colon: bool = False) -> str:
     stop_pattern = "|".join(re.escape(label_) for label_ in stop_labels)
-    pattern = rf"{re.escape(label)}\s*:?\s*(.+?)(?=(?:{stop_pattern})\s*:|$)"
+    # require_colon=True prevents matching the label when it appears inside prose (e.g.
+    # "competitive salary and benefits") instead of as an explicit "Salary: ..." field.
+    label_sep = r"\s*:" if require_colon else r"\s*:?"
+    # Stop at a label followed by ":" or "," so that section headers like
+    # "Job Description, Responsibilities and ..." also act as stop markers.
+    pattern = rf"{re.escape(label)}{label_sep}\s*(.+?)(?=(?:{stop_pattern})\s*[:,]|$)"
     match = re.search(pattern, text, flags=re.IGNORECASE | re.DOTALL)
     if not match:
         return ""

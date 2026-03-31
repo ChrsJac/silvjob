@@ -28,6 +28,8 @@ TIMEOUT = 45
 _MAX_DETAIL_PAGES = 40
 # Polite delay between detail-page requests within a single source
 _DETAIL_PAGE_DELAY = 0.3
+# Domains that host images/photos and should never be used as an external job posting URL
+_IMAGE_HOSTING_DOMAINS = frozenset({"smugmug.com", "flickr.com", "instagram.com", "imgur.com", "500px.com"})
 
 # Compiled regexes for the fast candidate pre-filter
 _TOPIC_RE = re.compile("|".join(TOPIC_PATTERNS.values()), re.IGNORECASE)
@@ -132,7 +134,7 @@ def parse_tamu_detail(detail_url: str, source: SourceConfig) -> JobRecord | None
     ])
     salary = extract_field(full_text, "Salary", [
         "Education Required", "Experience Required", "Location", "Description", "Contact"
-    ]) or "$--.--"
+    ], require_colon=True) or "$--.--"
     education_required = extract_field(full_text, "Education Required", [
         "Experience Required", "Location", "Description", "Contact"
     ])
@@ -213,7 +215,7 @@ def parse_warnell_detail(detail_url: str, source: SourceConfig) -> JobRecord | N
 
     salary = extract_field(full_text, "Salary", [
         "Job Benefits", "Job Description", "Qualifications", "Preferred Qualifications", "How to Apply"
-    ]) or "$--.--"
+    ], require_colon=True) or "$--.--"
     location = extract_field(full_text, "Location Detail", [
         "Salary", "Job Benefits", "Job Description", "Qualifications", "Preferred Qualifications"
     ]) or extract_field(full_text, "Location", [
@@ -228,8 +230,9 @@ def parse_warnell_detail(detail_url: str, source: SourceConfig) -> JobRecord | N
     for link in soup.find_all("a", href=True):
         href = link.get("href", "")
         if href.startswith("http") and "warnell.uga.edu" not in href:
-            external_posting_url = href
-            break
+            if not any(domain in href for domain in _IMAGE_HOSTING_DOMAINS):
+                external_posting_url = href
+                break
 
     keep = classify_job(title, description, "")
     if not keep.keep:
@@ -293,9 +296,10 @@ def _scrape_generic_detail(url: str, link_text: str, source: SourceConfig) -> Jo
 
     date_posted = extract_date_guess(full_text)
 
-    # Try to extract a location line
+    # Try to extract a location line; require an explicit colon to avoid matching
+    # words like "multi-campus" or "location" that appear inside description prose.
     location = ""
-    loc_m = re.search(r"(?:location|city|campus)\s*:?\s*([^\n,;|]{3,80})", full_text, re.IGNORECASE)
+    loc_m = re.search(r"(?:location|city|campus)\s*:\s*([^\n,;|]{3,80})", full_text, re.IGNORECASE)
     if loc_m:
         location = clean_text(loc_m.group(1))
 
