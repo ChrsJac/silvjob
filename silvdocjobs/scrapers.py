@@ -331,7 +331,7 @@ def scrape_generic_board(source: SourceConfig, max_pages: int = 2, days_back: in
             page_url = source.url
         else:
             sep = "&" if "?" in source.url else "?"
-            page_url = f"{source.url}{sep}page={page_num}"
+            page_url = f"{source.url}{sep}{source.pagination_param}={page_num}"
 
         try:
             html = fetch_html(page_url)

@@ -14,6 +14,9 @@ class SourceConfig:
     organization: str
     notes: str = ""
     enabled: bool = True
+    # Name of the query parameter used to request page N (N >= 2) in the generic_board engine.
+    # Most sites use "page" but some (e.g. HigherEdJobs) use a different name such as "PageNo".
+    pagination_param: str = "page"
 
 
 SOURCES: list[SourceConfig] = [
@@ -34,7 +37,7 @@ SOURCES: list[SourceConfig] = [
     SourceConfig(
         name="UGA Jobs",
         engine="generic_board",
-        url="https://www.ugajobsearch.com/postings/search?page=1&sort=226+desc&utf8=%E2%9C%93",
+        url="https://www.ugajobsearch.com/postings/search?sort=226+desc&utf8=%E2%9C%93",
         organization="University of Georgia",
         notes="Useful for direct forestry faculty searches."
     ),
@@ -43,14 +46,24 @@ SOURCES: list[SourceConfig] = [
         engine="generic_board",
         url="https://www.higheredjobs.com/faculty/search.cfm?JobCat=54",
         organization="HigherEdJobs",
-        notes="Broad academic board; useful for faculty roles in ecology and forestry."
+        notes="Broad academic board; useful for faculty roles in ecology and forestry.",
+        pagination_param="PageNo",
     ),
     SourceConfig(
         name="HigherEdJobs Natural Resources",
         engine="generic_board",
         url="https://www.higheredjobs.com/faculty/search.cfm?JobCat=154",
         organization="HigherEdJobs",
-        notes="Natural resources and conservation faculty positions on HigherEdJobs."
+        notes="Natural resources and conservation faculty positions on HigherEdJobs.",
+        pagination_param="PageNo",
+    ),
+    SourceConfig(
+        name="HigherEdJobs Environmental Science",
+        engine="generic_board",
+        url="https://www.higheredjobs.com/faculty/search.cfm?JobCat=56",
+        organization="HigherEdJobs",
+        notes="Environmental science faculty positions on HigherEdJobs; includes forest-adjacent roles.",
+        pagination_param="PageNo",
     ),
     SourceConfig(
         name="AcademicJobsOnline",
