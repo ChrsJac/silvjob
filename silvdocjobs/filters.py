@@ -32,7 +32,7 @@ ROLE_PATTERNS: dict[str, str] = {
     "postdoc": r"\bpost\s*-?doctoral?\b|\bpostdoc\b|\bpostdoctoral scholar\b|\bpostdoctoral fellow\b",
     "research scientist": r"\bresearch scientist\b|\bresearch faculty\b|\bscientist\b|\bresearch fellow\b",
     "research associate": r"\bresearch associate\b|\bresearch scholar\b",
-    "extension specialist": r"\bextension specialist\b|\bextension professor\b|\bextension forester\b|\bspecialist\b",
+    "extension specialist": r"\bextension specialist\b|\bextension professor\b|\bextension forester\b",
     "lecturer/instructor": r"\blecturer\b|\binstructor\b",
     "director": r"\bdirector\b",
 }
@@ -43,6 +43,9 @@ DOCTORATE_HINT_PATTERNS: dict[str, str] = {
 }
 
 EXCLUDE_PATTERNS: dict[str, str] = {
+    # NOTE: these patterns are intentionally checked against the *title* only in classify_job,
+    # not the full description — faculty descriptions routinely mention supervising students,
+    # interns, and technicians, which must not disqualify those postings.
     "student": r"\bgraduate opportunity\b|\bgraduate opportunities\b|\bundergraduate\b|\bstudent\b",
     "assistantship": r"\bassistantship\b|\bgraduate assistant\b|\bgraduate research assistant\b|\bgra\b",
     "intern": r"\bintern\b|\binternship\b",
@@ -61,12 +64,16 @@ class FilterResult:
 
 
 def classify_job(title: str, description: str = "", education_required: str = "") -> FilterResult:
-    text = " ".join([title, description, education_required]).lower()
+    full_text = " ".join([title, description, education_required]).lower()
+    title_lower = title.lower()
 
-    matched_terms = [name for name, pattern in TOPIC_PATTERNS.items() if re.search(pattern, text)]
-    matched_roles = [name for name, pattern in ROLE_PATTERNS.items() if re.search(pattern, text)]
-    matched_doctorate_hints = [name for name, pattern in DOCTORATE_HINT_PATTERNS.items() if re.search(pattern, text)]
-    matched_exclusions = [name for name, pattern in EXCLUDE_PATTERNS.items() if re.search(pattern, text)]
+    matched_terms = [name for name, pattern in TOPIC_PATTERNS.items() if re.search(pattern, full_text)]
+    matched_roles = [name for name, pattern in ROLE_PATTERNS.items() if re.search(pattern, full_text)]
+    matched_doctorate_hints = [name for name, pattern in DOCTORATE_HINT_PATTERNS.items() if re.search(pattern, full_text)]
+    # Apply exclusions to the title only: legitimate faculty/research job descriptions routinely
+    # mention graduate students, interns, and technicians they will supervise, which should not
+    # disqualify the posting.
+    matched_exclusions = [name for name, pattern in EXCLUDE_PATTERNS.items() if re.search(pattern, title_lower)]
 
     keep = bool(matched_terms) and bool(matched_roles) and not matched_exclusions
     return FilterResult(

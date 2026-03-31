@@ -50,9 +50,17 @@ def extract_first_heading_text(soup: BeautifulSoup) -> str:
     for tag in ["h1", "h2", "h3", "title"]:
         node = soup.find(tag)
         if node:
-            text = clean_text(node.get_text(" ", strip=True))
-            if text:
-                return text
+            # Preserve newlines so we can take only the first meaningful line,
+            # preventing description text that follows the title from leaking in.
+            raw = html.unescape(node.get_text("\n", strip=True))
+            for line in raw.splitlines():
+                text = re.sub(r"\s+", " ", line).strip()
+                if text:
+                    # Cap at a reasonable title length to handle edge cases where
+                    # a heading element contains more than just the position title.
+                    if len(text) > 200:
+                        text = text[:200].rsplit(" ", 1)[0]
+                    return text
     return ""
 
 
