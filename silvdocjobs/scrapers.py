@@ -253,10 +253,12 @@ def parse_warnell_detail(detail_url: str, source: SourceConfig) -> JobRecord | N
 
 
 def _could_be_job_candidate(title: str, context: str) -> bool:
-    """Lenient pre-filter: needs at least one topic OR role keyword, and no hard exclusions."""
-    text = f"{title} {context}".lower()
-    if _EXCLUDE_RE.search(text):
+    """Lenient pre-filter: needs at least one topic OR role keyword, and no hard exclusions
+    in the link text itself (exclusions are NOT applied to the surrounding context to avoid
+    rejecting faculty postings whose listing page context mentions students or internships)."""
+    if _EXCLUDE_RE.search(title.lower()):
         return False
+    text = f"{title} {context}".lower()
     return bool(_TOPIC_RE.search(text) or _ROLE_RE.search(text))
 
 
@@ -271,7 +273,22 @@ def _scrape_generic_detail(url: str, link_text: str, source: SourceConfig) -> Jo
     soup = BeautifulSoup(html, "html.parser")
     full_text = clean_text(soup.get_text("\n", strip=True))
 
-    title = extract_first_heading_text(soup) or link_text
+    heading = extract_first_heading_text(soup)
+    # Prefer link_text when the heading is absent, much longer than the link text
+    # (heading contains description prose), or doesn't contain any job-role/topic
+    # keywords while the link text does — which usually means the heading is a site
+    # name or section label rather than the actual position title.
+    if heading and link_text:
+        heading_has_signal = bool(_TOPIC_RE.search(heading.lower()) or _ROLE_RE.search(heading.lower()))
+        link_has_signal = bool(_TOPIC_RE.search(link_text.lower()) or _ROLE_RE.search(link_text.lower()))
+        # If heading is more than 3× the link-text length it likely contains description
+        # prose rather than just the position title; prefer the link text in that case.
+        if (not heading_has_signal and link_has_signal) or len(heading) > len(link_text) * 3:
+            title = link_text
+        else:
+            title = heading
+    else:
+        title = heading or link_text
     description = normalize_description(full_text)
 
     date_posted = extract_date_guess(full_text)
@@ -314,7 +331,7 @@ def scrape_generic_board(source: SourceConfig, max_pages: int = 2, days_back: in
             page_url = source.url
         else:
             sep = "&" if "?" in source.url else "?"
-            page_url = f"{source.url}{sep}page={page_num}"
+            page_url = f"{source.url}{sep}{source.pagination_param}={page_num}"
 
         try:
             html = fetch_html(page_url)
