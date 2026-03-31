@@ -30,15 +30,27 @@ Use Shiny only if you later want authenticated users, server-side joins, databas
 ## Current source mix
 
 This repo includes:
-- Texas A&M Natural Resources Job Board
-- UGA Warnell Jobs
+- Texas A&M Natural Resources Job Board (dedicated parser)
+- UGA Warnell Jobs (dedicated parser)
 - UGA Jobs
-- HigherEdJobs Ecology and Forestry
+- HigherEdJobs Ecology and Forestry (JobCat=54)
+- HigherEdJobs Natural Resources (JobCat=154)
+- HigherEdJobs Environmental Science (JobCat=56)
+- HigherEdJobs Agriculture (JobCat=2)
+- HigherEdJobs Keyword: Forestry (cross-category keyword search)
+- HigherEdJobs Keyword: Silviculture (cross-category keyword search)
 - AcademicJobsOnline
 - Academic Keys Forestry
 - Chronicle Ecology and Forestry
 - Ecophys Jobs Postdoc
 - SAF Career Center Faculty
+- ESA Career Center
+- IUFRO Job Advertisements
+- Society for Conservation Biology Jobs
+- USDA Forest Service Research Jobs
+- Yale School of the Environment Jobs
+- Oregon State College of Forestry Employment
+- Nature Careers Ecology and Forestry
 
 ## Academic job boards worth adding or keeping
 
