@@ -83,38 +83,15 @@
           <button class="sp-view-btn active" data-view="presence">Presence Over Time</button>
           <button class="sp-view-btn" data-view="institutions">By Institution</button>
           <button class="sp-view-btn" data-view="retired">Retired/Emeritus</button>
-          <button class="sp-view-btn" data-view="people">People</button>
         </div>
       </div>
 
       <!-- Stats summary -->
       <p id="spStats" class="sp-stats"></p>
 
-      <!-- Chart canvas (hidden when People view is active) -->
+      <!-- Chart canvas -->
       <div id="spChartBox" class="sp-chart-box">
         <canvas id="spChart"></canvas>
-      </div>
-
-      <!-- People table (hidden when chart view is active) -->
-      <div id="spPeoplePanel" hidden>
-        <div class="sp-people-header">
-          <input id="spPersonSearch" type="search" class="sp-search" placeholder="Search name or institution…">
-          <span id="spPeopleCount" class="sp-stats"></span>
-        </div>
-        <div class="sp-table-wrap">
-          <table id="spPeopleTable">
-            <thead>
-              <tr>
-                <th>Person</th>
-                <th>Institution</th>
-                <th>First Year</th>
-                <th>Last Year</th>
-                <th>Total Tours</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
       </div>
 
       <!-- Institution drill-down detail -->
