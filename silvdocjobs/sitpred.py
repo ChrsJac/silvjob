@@ -92,6 +92,95 @@ def _clean_institution_name(name: str) -> str:
     return cleaned.strip(" ,.")
 
 
+# Regexes used by _shorten_institution_name / _extract_institution_core
+_INST_KEYWORD_RE = re.compile(r"\b(?:University|College|Institute|Academy)\b", re.IGNORECASE)
+_DEPT_KEYWORD_RE = re.compile(
+    r"\b(?:School|Department|Dept\.?|College|Division|Center|Programme?|"
+    r"Faculty|Laboratory|Lab|Institute|Unit|Station)\b",
+    re.IGNORECASE,
+)
+_TRAILING_ADDR_RE = re.compile(r"\s+\d[\w\s\-.]*$")
+_TRAILING_STATE_RE = re.compile(r",\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\s*$")
+# Negative lookahead group used inside _CORE_UNI_RE to stop "of X" extension
+# from greedily capturing a following institution/department keyword.
+_INST_STOP_PATTERN = r"(?:University|College|Institute|Academy|School|Department|Division|Center|Faculty)"
+_WORD_TOKEN = r"[\w.\'-]+"
+_CORE_UNI_RE = re.compile(
+    r"\b((?:" + _WORD_TOKEN + r"\s+){0,5}University"
+    r"(?:\s+of\s+" + _WORD_TOKEN
+    + r"(?:\s+(?!" + _INST_STOP_PATTERN + r"\b)" + _WORD_TOKEN + r")?)?)\b"
+)
+_CORE_COL_RE = re.compile(r"\b((?:" + _WORD_TOKEN + r"\s+){0,5}College)\b")
+_CORE_INS_RE = re.compile(
+    r"\b((?:" + _WORD_TOKEN + r"\s+){0,5}Institute(?:\s+of\s+" + _WORD_TOKEN + r")?)\b"
+)
+
+
+def _extract_institution_core(s: str) -> str:
+    """Extract the core University/College/Institute name from a string that may
+    have trailing city/address noise (e.g. "Louisiana State University Baton Rouge"
+    → "Louisiana State University").
+
+    A negative lookahead prevents the "of Y" extension from grabbing another
+    institution keyword (e.g. "University of Idaho College..." → "University of Idaho").
+    """
+    m = _CORE_UNI_RE.search(s)
+    if m:
+        return m.group(1).strip()
+    m = _CORE_COL_RE.search(s)
+    if m:
+        return m.group(1).strip()
+    m = _CORE_INS_RE.search(s)
+    if m:
+        return m.group(1).strip()
+    return s
+
+
+def _shorten_institution_name(name: str) -> str:
+    """Strip verbose department/school/college prefixes from institution strings
+    and return the core institution name.
+
+    Examples::
+        "School of Forestry, Northern Arizona University"
+            → "Northern Arizona University"
+        "School of Forest, Fisheries and Geomatics Sciences, University of Florida"
+            → "University of Florida"
+        "School of Renewable Natural Resources, Louisiana State University Baton Rouge , Louisiana"
+            → "Louisiana State University"
+        "Forestry Department, Paul Smith's College 7777 NY-30"
+            → "Paul Smith's College"
+        "Rocky Mountain Research Station, USDA Forest Service 2500 S. Pine Knoll Drive"
+            → "USDA Forest Service"
+    """
+    if not name:
+        return name
+
+    parts = [p.strip() for p in name.split(",")]
+
+    if len(parts) >= 2:
+        # Find the rightmost comma-part that names a university/college/institute.
+        for i in range(len(parts) - 1, 0, -1):
+            part = parts[i]
+            if _INST_KEYWORD_RE.search(part) and len(part) > 6:
+                part = _TRAILING_ADDR_RE.sub("", part).strip()
+                inst = _extract_institution_core(part)
+                if len(inst) > 4:
+                    return inst
+
+        # If the first part starts with a known department keyword, discard it.
+        if _DEPT_KEYWORD_RE.search(parts[0]):
+            rest = ", ".join(parts[1:]).strip()
+            rest = _TRAILING_ADDR_RE.sub("", rest).strip()
+            rest = _TRAILING_STATE_RE.sub("", rest).strip()
+            if len(rest) > 4:
+                return rest
+
+    # Single part or no simplification found — strip trailing noise only.
+    result = _TRAILING_ADDR_RE.sub("", name).strip()
+    result = _TRAILING_STATE_RE.sub("", result).strip()
+    return result.rstrip(", ").strip() or name
+
+
 # ── Data classes ──────────────────────────────────────────────────────────────
 
 @dataclass
@@ -214,12 +303,12 @@ def _parse_institution(raw: str) -> tuple[str, str, str | None]:
     raw = raw.strip()
     if re.match(r"retired\b", raw, re.IGNORECASE):
         last_known = re.sub(r"^retired[,.\s]*", "", raw, flags=re.IGNORECASE).strip()
-        last_known = _clean_institution_name(last_known)
+        last_known = _shorten_institution_name(_clean_institution_name(last_known))
         return "retired_or_emeritus", last_known, last_known
     if re.search(r"\bemerit", raw, re.IGNORECASE):
-        cleaned = _clean_institution_name(raw)
+        cleaned = _shorten_institution_name(_clean_institution_name(raw))
         return "retired_or_emeritus", cleaned, cleaned
-    cleaned = _clean_institution_name(raw)
+    cleaned = _shorten_institution_name(_clean_institution_name(raw))
     return "active_institution", cleaned, None
 
 
